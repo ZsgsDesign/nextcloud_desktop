@@ -159,15 +159,6 @@ static CSYNC_EXCLUDE_TYPE _csync_excluded_common(const QString &path, bool exclu
         return CSYNC_FILE_EXCLUDE_LONG_FILENAME;
     }
 
-    if (blen > 1) {
-        if (bname.at(blen - 1) == QLatin1Char(' ')) {
-            return CSYNC_FILE_EXCLUDE_TRAILING_SPACE;
-        }
-        if (bname.at(0) == QLatin1Char(' ')) {
-            return CSYNC_FILE_EXCLUDE_LEADING_SPACE;
-        }
-    }
-
 #ifdef _WIN32
     // Windows cannot sync files ending in spaces (#2176). It also cannot
     // distinguish files ending in '.' from files without an ending,

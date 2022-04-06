@@ -92,6 +92,17 @@ InvalidFilenameDialog::InvalidFilenameDialog(AccountPtr account, Folder *folder,
     connect(_ui->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(_ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
+    if (!Utility::isWindows()) {
+        const auto fileName = filePathFileInfo.fileName();
+        const auto hasLeadingOrTrailingSpaces = fileName.startsWith(QLatin1Char(' ')) || fileName.endsWith(QLatin1Char(' '));
+
+        if (hasLeadingOrTrailingSpaces) {
+            _ui->buttonBox->setStandardButtons(_ui->buttonBox->standardButtons() | QDialogButtonBox::No);
+            _ui->buttonBox->button(QDialogButtonBox::No)->setText(tr("Use invalid name"));
+            connect(_ui->buttonBox->button(QDialogButtonBox::No), &QPushButton::clicked, this, &InvalidFilenameDialog::useInvalidName);
+        }
+    }
+
     connect(_ui->filenameLineEdit, &QLineEdit::textChanged, this,
         &InvalidFilenameDialog::onFilenameLineEditTextChanged);
 
@@ -121,6 +132,11 @@ void InvalidFilenameDialog::onPropfindPermissionSuccess(const QVariantMap &value
         _ui->buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
         _ui->filenameLineEdit->setEnabled(false);
     }
+}
+
+void InvalidFilenameDialog::useInvalidName()
+{
+    emit acceptedInvalidName(_filePath);
 }
 
 void InvalidFilenameDialog::accept()

@@ -548,6 +548,8 @@ void SyncEngine::startSync()
     emit transmissionProgress(*_progressInfo);
 
     _discoveryPhase.reset(new DiscoveryPhase);
+    _discoveryPhase->_leadingAndTrailingSpacesFilesAllowed = _leadingAndTrailingSpacesFilesAllowed;
+    _leadingAndTrailingSpacesFilesAllowed.clear();
     _discoveryPhase->_account = _account;
     _discoveryPhase->_excludes = _excludedFiles.data();
     const QString excludeFilePath = _localPath + QStringLiteral(".sync-exclude.lst");
@@ -922,6 +924,11 @@ void SyncEngine::slotAddTouchedFile(const QString &fn)
 void SyncEngine::slotClearTouchedFiles()
 {
     _touchedFiles.clear();
+}
+
+void SyncEngine::addAcceptedInvalidFileName(const QString& filePath)
+{
+    _leadingAndTrailingSpacesFilesAllowed.append(filePath);
 }
 
 bool SyncEngine::wasFileTouched(const QString &fn) const

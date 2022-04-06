@@ -37,54 +37,6 @@ namespace OCC {
 
 Q_LOGGING_CATEGORY(lcDisco, "sync.discovery", QtInfoMsg)
 
-
-bool ProcessDirectoryJob::checkForInvalidFileName(const PathTuple &path,
-    const std::map<QString, Entries> &entries, Entries &entry)
-{
-    const auto originalFileName = entry.localEntry.isValid() ? entry.localEntry.name : entry.serverEntry.name;
-    const auto newFileName = originalFileName.trimmed();
-
-    if (originalFileName == newFileName) {
-        return true;
-    }
-
-    const auto entriesIter = entries.find(newFileName);
-    if (entriesIter != entries.end()) {
-        QString errorMessage;
-        const auto newFileNameEntry = entriesIter->second;
-        if (entry.serverEntry.isValid() && newFileNameEntry.serverEntry.isValid()) {
-            errorMessage = tr("File contains trailing spaces and could not be renamed, because a file with the same name already exists on the server.");
-        }
-        if (entry.localEntry.isValid() && newFileNameEntry.localEntry.isValid()) {
-            errorMessage = tr("File contains trailing spaces and could not be renamed, because a file with the same name already exists locally.");
-        }
-
-        if (!errorMessage.isEmpty()) {
-            auto item = SyncFileItemPtr::create();
-            if ((entry.localEntry.isValid() && entry.localEntry.isDirectory) || (entry.serverEntry.isValid() && entry.serverEntry.isDirectory)) {
-                item->_type = CSyncEnums::ItemTypeDirectory;
-            } else {
-                item->_type = CSyncEnums::ItemTypeFile;
-            }
-            item->_file = path._target;
-            item->_originalFile = path._target;
-            item->_instruction = CSYNC_INSTRUCTION_ERROR;
-            item->_status = SyncFileItem::NormalError;
-            item->_errorString = errorMessage;
-            processFileFinalize(item, path, false, ParentNotChanged, ParentNotChanged);
-            return false;
-        }
-    }
-
-    if (entry.localEntry.isValid()) {
-        entry.localEntry.renameName = newFileName;
-    } else {
-        entry.serverEntry.renameName = newFileName;
-    }
-
-    return true;
-}
-
 void ProcessDirectoryJob::start()
 {
     qCInfo(lcDisco) << "STARTING" << _currentFolder._server << _queryServer << _currentFolder._local << _queryLocal;
@@ -230,14 +182,11 @@ void ProcessDirectoryJob::process()
 #endif
         if (handleExcluded(path._target, e.localEntry.name,
                 e.localEntry.isDirectory || e.serverEntry.isDirectory, isHidden,
-                e.localEntry.isSymLink || isServerEntryWindowsShortcut))
+                e.localEntry.isSymLink || isServerEntryWindowsShortcut, e.serverEntry.isValid() || e.dbEntry.isValid()))
             continue;
 
         if (_queryServer == InBlackList || _discoveryData->isInSelectiveSyncBlackList(path._original)) {
             processBlacklisted(path, e.localEntry, e.dbEntry);
-            continue;
-        }
-        if (!checkForInvalidFileName(path, entries, e)) {
             continue;
         }
         processFile(std::move(path), e.localEntry, e.serverEntry, e.dbEntry);
@@ -245,9 +194,27 @@ void ProcessDirectoryJob::process()
     QTimer::singleShot(0, _discoveryData, &DiscoveryPhase::scheduleMoreJobs);
 }
 
-bool ProcessDirectoryJob::handleExcluded(const QString &path, const QString &localName, bool isDirectory, bool isHidden, bool isSymlink)
+bool ProcessDirectoryJob::handleExcluded(const QString &path, const QString &localName, bool isDirectory, bool isHidden, bool isSymlink, bool isNew)
 {
     auto excluded = _discoveryData->_excludes->traversalPatternMatch(path, isDirectory ? ItemTypeDirectory : ItemTypeFile);
+
+    if (excluded == CSYNC_NOT_EXCLUDED) {
+        if (localName.endsWith(QLatin1Char(' '))) {
+            excluded = CSYNC_FILE_EXCLUDE_TRAILING_SPACE;
+        }
+        else if (localName.startsWith(QLatin1Char(' '))) {
+            excluded = CSYNC_FILE_EXCLUDE_LEADING_SPACE;
+        }
+    }
+
+    const auto fullPath = QString(_discoveryData->_localDir + path);
+    const auto hasSpace = path.endsWith(QLatin1Char(' '));
+    const auto isAllowed = _discoveryData->_leadingAndTrailingSpacesFilesAllowed.contains(fullPath);
+
+    if ((excluded == CSYNC_FILE_EXCLUDE_LEADING_SPACE || excluded == CSYNC_FILE_EXCLUDE_TRAILING_SPACE)
+            && ((!Utility::isWindows() && isNew) || _discoveryData->_leadingAndTrailingSpacesFilesAllowed.contains(fullPath))) {
+        excluded = CSYNC_NOT_EXCLUDED;
+    }
 
     // FIXME: move to ExcludedFiles 's regexp ?
     bool isInvalidPattern = false;
