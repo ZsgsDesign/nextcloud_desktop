@@ -120,6 +120,8 @@ set(client_SRCS
     ocssharejob.cpp
     ocsshareejob.h
     ocsshareejob.cpp
+    ocslockfilejob.h
+    ocslockfilejob.cpp
     openfilemanager.h
     openfilemanager.cpp
     owncloudgui.h
