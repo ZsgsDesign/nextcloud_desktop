@@ -48,7 +48,8 @@ Q_LOGGING_CATEGORY(lcDb, "nextcloud.sync.database", QtInfoMsg)
 
 #define GET_FILE_RECORD_QUERY \
         "SELECT path, inode, modtime, type, md5, fileid, remotePerm, filesize," \
-        "  ignoredChildrenRemote, contentchecksumtype.name || ':' || contentChecksum, e2eMangledName, isE2eEncrypted " \
+        "  ignoredChildrenRemote, contentchecksumtype.name || ':' || contentChecksum, e2eMangledName, isE2eEncrypted, " \
+        "  lock, lockType, lockOwner, lockOwnerEditor, lockTime " \
         " FROM metadata" \
         "  LEFT JOIN checksumtype as contentchecksumtype ON metadata.contentChecksumTypeId == contentchecksumtype.id"
 
@@ -66,6 +67,11 @@ static void fillFileRecordFromGetQuery(SyncJournalFileRecord &rec, SqlQuery &que
     rec._checksumHeader = query.baValue(9);
     rec._e2eMangledName = query.baValue(10);
     rec._isE2eEncrypted = query.intValue(11) > 0;
+    rec._locked = query.intValue(12) > 0;
+    rec._lockOwner = query.baValue(13);
+    rec._lockOwnerType = query.int64Value(14);
+    rec._lockEditorAppId = query.int64Value(15);
+    rec._lockTime = query.int64Value(16);
 }
 
 static QByteArray defaultJournalMode(const QString &dbPath)
@@ -806,6 +812,56 @@ bool SyncJournalDb::updateMetadataTableStructure()
         commitInternal(QStringLiteral("update database structure: add e2eMangledName index"));
     }
 
+    if (columns.indexOf("lock") == -1) {
+        SqlQuery query(_db);
+        query.prepare("ALTER TABLE metadata ADD COLUMN lock INTEGER;");
+        if (!query.exec()) {
+            sqlFail(QStringLiteral("updateMetadataTableStructure: add lock column"), query);
+            re = false;
+        }
+        commitInternal(QStringLiteral("update database structure: add lock column"));
+    }
+
+    if (columns.indexOf("lockType") == -1) {
+        SqlQuery query(_db);
+        query.prepare("ALTER TABLE metadata ADD COLUMN lockType INTEGER;");
+        if (!query.exec()) {
+            sqlFail(QStringLiteral("updateMetadataTableStructure: add lockType column"), query);
+            re = false;
+        }
+        commitInternal(QStringLiteral("update database structure: add lockType column"));
+    }
+
+    if (columns.indexOf("lockOwner") == -1) {
+        SqlQuery query(_db);
+        query.prepare("ALTER TABLE metadata ADD COLUMN lockOwner TEXT;");
+        if (!query.exec()) {
+            sqlFail(QStringLiteral("updateMetadataTableStructure: add lockOwner column"), query);
+            re = false;
+        }
+        commitInternal(QStringLiteral("update database structure: add lockOwner column"));
+    }
+
+    if (columns.indexOf("lockOwnerEditor") == -1) {
+        SqlQuery query(_db);
+        query.prepare("ALTER TABLE metadata ADD COLUMN lockOwnerEditor INTEGER;");
+        if (!query.exec()) {
+            sqlFail(QStringLiteral("updateMetadataTableStructure: add lockOwnerEditor column"), query);
+            re = false;
+        }
+        commitInternal(QStringLiteral("update database structure: add lockOwnerEditor column"));
+    }
+
+    if (columns.indexOf("lockTime") == -1) {
+        SqlQuery query(_db);
+        query.prepare("ALTER TABLE metadata ADD COLUMN lockTime INTEGER;");
+        if (!query.exec()) {
+            sqlFail(QStringLiteral("updateMetadataTableStructure: add lockTime column"), query);
+            re = false;
+        }
+        commitInternal(QStringLiteral("update database structure: add lockTime column"));
+    }
+
     return re;
 }
 
@@ -937,8 +993,9 @@ Result<void, QString> SyncJournalDb::setFileRecord(const SyncJournalFileRecord &
         int contentChecksumTypeId = mapChecksumType(checksumType);
 
         const auto query = _queryManager.get(PreparedSqlQueryManager::SetFileRecordQuery, QByteArrayLiteral("INSERT OR REPLACE INTO metadata "
-                                                                                                            "(phash, pathlen, path, inode, uid, gid, mode, modtime, type, md5, fileid, remotePerm, filesize, ignoredChildrenRemote, contentChecksum, contentChecksumTypeId, e2eMangledName, isE2eEncrypted) "
-                                                                                                            "VALUES (?1 , ?2, ?3 , ?4 , ?5 , ?6 , ?7,  ?8 , ?9 , ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18);"),
+                                                                                                            "(phash, pathlen, path, inode, uid, gid, mode, modtime, type, md5, fileid, remotePerm, filesize, ignoredChildrenRemote, "
+                                                                                                            "contentChecksum, contentChecksumTypeId, e2eMangledName, isE2eEncrypted, lock, lockType, lockOwner, lockOwnerEditor, lockTime) "
+                                                                                                            "VALUES (?1 , ?2, ?3 , ?4 , ?5 , ?6 , ?7,  ?8 , ?9 , ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23);"),
             _db);
         if (!query) {
             return query->error();
@@ -962,6 +1019,11 @@ Result<void, QString> SyncJournalDb::setFileRecord(const SyncJournalFileRecord &
         query->bindValue(16, contentChecksumTypeId);
         query->bindValue(17, record._e2eMangledName);
         query->bindValue(18, record._isE2eEncrypted);
+        query->bindValue(19, record._locked ? 1 : 0);
+        query->bindValue(20, record._lockOwnerType);
+        query->bindValue(21, record._lockOwner);
+        query->bindValue(22, record._lockEditorAppId);
+        query->bindValue(23, record._lockTime);
 
         if (!query->exec()) {
             return query->error();

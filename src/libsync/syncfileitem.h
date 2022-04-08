@@ -93,6 +93,13 @@ public:
     };
     Q_ENUM(Status)
 
+    enum class LockStatus {
+        LockedItem,
+        UnlockedItem,
+    };
+
+    Q_ENUM(LockStatus)
+
     SyncJournalFileRecord toSyncJournalFileRecordWithInode(const QString &localFileName) const;
 
     /** Creates a basic SyncFileItem from a DB record
@@ -278,6 +285,12 @@ public:
 
     QString _directDownloadUrl;
     QString _directDownloadCookies;
+
+    LockStatus _locked = LockStatus::UnlockedItem;
+    QByteArray _lockOwner;
+    qint64 _lockOwnerType = 0;
+    qint64 _lockEditorAppId = 0;
+    qint64 _lockTime = 0;
 };
 
 inline bool operator<(const SyncFileItemPtr &item1, const SyncFileItemPtr &item2)

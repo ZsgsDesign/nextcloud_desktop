@@ -70,6 +70,11 @@ public:
     QByteArray _checksumHeader;
     QByteArray _e2eMangledName;
     bool _isE2eEncrypted = false;
+    bool _locked = false;
+    QByteArray _lockOwner;
+    qint64 _lockOwnerType = 0;
+    qint64 _lockEditorAppId = 0;
+    qint64 _lockTime = 0;
 };
 
 bool OCSYNC_EXPORT

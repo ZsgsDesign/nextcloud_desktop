@@ -378,6 +378,13 @@ void DiscoverySingleDirectoryJob::start()
     if (_account->capabilities().clientSideEncryptionAvailable()) {
         props << "http://nextcloud.org/ns:is-encrypted";
     }
+    if (_account->capabilities().filesLockAvailable()) {
+        props << "http://nextcloud.org/ns:lock"
+              << "http://nextcloud.org/ns:lock-owner-displayname"
+              << "http://nextcloud.org/ns:lock-owner-type"
+              << "http://nextcloud.org/ns:lock-owner-editor"
+              << "http://nextcloud.org/ns:lock-time";
+    }
 
     lsColJob->setProperties(props);
 
@@ -445,6 +452,38 @@ static void propertyMapToRemoteInfo(const QMap<QString, QString> &map, RemoteInf
             }
         } else if (property == "is-encrypted" && value == QStringLiteral("1")) {
             result.isE2eEncrypted = true;
+        } else if (property == "lock") {
+            result.locked = (value == QStringLiteral("1") ? SyncFileItem::LockStatus::LockedItem : SyncFileItem::LockStatus::UnlockedItem);
+        }
+        if (property == "lock-owner-displayname") {
+            result.lockOwner = value.toUtf8();
+        }
+        if (property == "lock-owner-type") {
+            auto ok = false;
+            const auto intConvertedValue = value.toULongLong(&ok);
+            if (ok) {
+                result.lockOwnerType = intConvertedValue;
+            } else {
+                result.lockOwnerType = 0;
+            }
+        }
+        if (property == "lock-owner-editor") {
+            auto ok = false;
+            const auto intConvertedValue = value.toULongLong(&ok);
+            if (ok) {
+                result.lockEditorAppId = intConvertedValue;
+            } else {
+                result.lockEditorAppId = 0;
+            }
+        }
+        if (property == "lock-time") {
+            auto ok = false;
+            const auto intConvertedValue = value.toULongLong(&ok);
+            if (ok) {
+                result.lockTime = intConvertedValue;
+            } else {
+                result.lockTime = 0;
+            }
         }
     }
 

@@ -65,6 +65,12 @@ struct RemoteInfo
 
     QString directDownloadUrl;
     QString directDownloadCookies;
+
+    SyncFileItem::LockStatus locked = SyncFileItem::LockStatus::UnlockedItem;
+    QByteArray lockOwner;
+    qint64 lockOwnerType = 0;
+    qint64 lockEditorAppId = 0;
+    qint64 lockTime = 0;
 };
 
 struct LocalInfo

@@ -1143,6 +1143,10 @@ void PropagateDownloadFile::downloadFinished()
         qCWarning(lcPropagateDownload()) << "invalid modified time" << _item->_file << _item->_modtime;
     }
 
+    if (_item->_locked == SyncFileItem::LockStatus::LockedItem && (_item->_lockOwnerType != 0 || _item->_lockOwner != propagator()->account()->davUser())) {
+        FileSystem::setFileReadOnly(_tmpFile.fileName(), true);
+    }
+
     bool previousFileExists = FileSystem::fileExists(fn);
     if (previousFileExists) {
         // Preserve the existing file permissions.

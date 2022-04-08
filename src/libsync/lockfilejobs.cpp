@@ -33,10 +33,10 @@ void LockFileJob::start()
     QByteArray verb;
     switch(_requestedLockState)
     {
-    case SyncFileItem::LockedItem:
+    case SyncFileItem::LockStatus::LockedItem:
         verb = "LOCK";
         break;
-    case SyncFileItem::UnlockedItem:
+    case SyncFileItem::LockStatus::UnlockedItem:
         verb = "UNLOCK";
         break;
     }

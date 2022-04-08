@@ -374,7 +374,8 @@ void ProcessDirectoryJob::processFile(PathTuple path,
                               << " | inode: " << dbEntry._inode << "/" << localEntry.inode << "/"
                               << " | type: " << dbEntry._type << "/" << localEntry.type << "/" << (serverEntry.isDirectory ? ItemTypeDirectory : ItemTypeFile)
                               << " | e2ee: " << dbEntry._isE2eEncrypted << "/" << serverEntry.isE2eEncrypted
-                              << " | e2eeMangledName: " << dbEntry.e2eMangledName() << "/" << serverEntry.e2eMangledName;
+                              << " | e2eeMangledName: " << dbEntry.e2eMangledName() << "/" << serverEntry.e2eMangledName
+                              << " | file lock: " << (serverEntry.isValid() ? (serverEntry.locked == SyncFileItem::LockStatus::LockedItem ? "locked" : "not locked") : (dbEntry._locked ? "locked" : "not locked"));
 
     if (localEntry.isValid()
         && !serverEntry.isValid()
@@ -483,6 +484,12 @@ void ProcessDirectoryJob::processFileAnalyzeRemoteInfo(
         Q_ASSERT(serverEntry.e2eMangledName.startsWith(rootPath));
         return serverEntry.e2eMangledName.mid(rootPath.length());
     }();
+    item->_locked = serverEntry.locked;
+    item->_lockOwner = serverEntry.lockOwner;
+    item->_lockOwnerType = serverEntry.lockOwnerType;
+    item->_lockEditorAppId = serverEntry.lockEditorAppId;
+    item->_lockTime = serverEntry.lockTime;
+    qCInfo(lcDisco()) << item->_locked << item->_lockOwner << item->_lockOwnerType << item->_lockEditorAppId << item->_lockTime;
 
     // Check for missing server data
     {

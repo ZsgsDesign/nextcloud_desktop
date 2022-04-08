@@ -45,6 +45,11 @@ SyncJournalFileRecord SyncFileItem::toSyncJournalFileRecordWithInode(const QStri
     rec._checksumHeader = _checksumHeader;
     rec._e2eMangledName = _encryptedFileName.toUtf8();
     rec._isE2eEncrypted = _isEncrypted;
+    rec._locked = _locked == LockStatus::LockedItem;
+    rec._lockOwner = _lockOwner;
+    rec._lockOwnerType = _lockOwnerType;
+    rec._lockEditorAppId = _lockEditorAppId;
+    rec._lockTime = _lockTime;
 
     // Update the inode if possible
     rec._inode = _inode;
@@ -75,6 +80,11 @@ SyncFileItemPtr SyncFileItem::fromSyncJournalFileRecord(const SyncJournalFileRec
     item->_checksumHeader = rec._checksumHeader;
     item->_encryptedFileName = rec.e2eMangledName();
     item->_isEncrypted = rec._isE2eEncrypted;
+    item->_locked = rec._locked ? LockStatus::LockedItem : LockStatus::UnlockedItem;
+    item->_lockOwner = rec._lockOwner;
+    item->_lockOwnerType = rec._lockOwnerType;
+    item->_lockEditorAppId = rec._lockEditorAppId;
+    item->_lockTime = rec._lockTime;
     return item;
 }
 
