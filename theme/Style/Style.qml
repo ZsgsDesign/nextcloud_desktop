@@ -59,6 +59,9 @@ QtObject {
     property int activityItemActionPrimaryButtonMinWidth: 100
     property int activityItemActionSecondaryButtonMinWidth: 80
 
+    property int callNotificationPrimaryButtonMinWidth: 128
+    property int callNotificationPrimaryButtonMinHeight: 60
+
     property int roundButtonBackgroundVerticalMargins: 10
     property int roundedButtonBackgroundVerticalMargins: 5
     
